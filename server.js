@@ -112,11 +112,11 @@ async function syncMeetingToNotion(meetingId, versionNo) {
 
 const ROOT = import.meta.dirname;
 const app = express();
-const upload = multer({ dest: path.join(ROOT, 'uploads'), limits: { fileSize: 25 * 1024 * 1024 } });
+const upload = multer({ dest: process.env.VERCEL ? '/tmp/uploads' : path.join(ROOT, 'uploads'), limits: { fileSize: 25 * 1024 * 1024 } });
 
 app.use(express.json({ limit: '2mb' }));
 app.use(express.static(path.join(ROOT, 'public')));
-app.use('/output', express.static(path.join(ROOT, 'output')));
+app.use('/output', express.static(store.OUTPUT_DIR));
 app.use('/samples', express.static(path.join(ROOT, 'samples')));
 
 const wrap = (fn) => (req, res) =>
@@ -380,7 +380,7 @@ app.post(
         siteInfo = { error: e.message };
       }
     }
-    if (!glossary.length && !site?.rows?.length) {
+    if (!isMock() && !glossary.length && !site?.rows?.length) {
       throw new Error(siteInfo?.error ? `검수 기준(노션 UI 문구)을 못 읽었어요: ${siteInfo.error}` : '검수 기준이 없어요. 노션 UI 문구 용어집을 연결해 주세요.');
     }
     const ai = await reviewWording({ text, lang, glossary, ruleFindings, site });
@@ -407,8 +407,10 @@ app.patch('/api/members/:id', wrap(async (req, res) => {
   res.json(await teams.loadDirectory());
 }));
 
+export default app; // Vercel은 이 app을 함수로 감싸 실행한다
+
 const port = Number(process.env.PORT || 3000);
-app.listen(port, () => {
+if (!process.env.VERCEL) app.listen(port, () => {
   console.log(`회의 후속 정리기: http://localhost:${port}`);
   console.log(isMock() ? '연습 모드(MOCK_AI=1): AI를 부르지 않고 예시 결과를 씁니다.' : `AI 모델: ${analysisModel()}`);
   // 노션 정책은 읽는 데 오래 걸려서 서버가 뜨자마자 미리 읽어 둔다

@@ -13,5 +13,8 @@
     "@notionhq/client": "^5.31.1",
     "express": "^4.21.2",
     "multer": "^2.0.2"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

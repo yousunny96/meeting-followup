@@ -1,0 +1,14 @@
+# Render 블루프린트: 연습 모드(키 없이 예시 결과)로 데모 서버를 띄운다
+services:
+  - type: web
+    name: meeting-followup
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/status
+    envVars:
+      - key: MOCK_AI
+        value: "1"
+      - key: NODE_VERSION
+        value: "22.12.0"
