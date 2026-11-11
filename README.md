@@ -32,6 +32,19 @@ npm start                 # http://localhost:3000
 npm run mock
 ```
 
+## 녹음 → 텍스트 + 화자 구분: whisperX (선택, 이 컴퓨터에서 무료)
+
+```bash
+brew install ffmpeg
+python3.12 -m venv .venv-whisperx
+.venv-whisperx/bin/pip install whisperx
+```
+
+- `.venv-whisperx`가 있으면 앱이 자동으로 whisperX를 씁니다 (끄려면 `WHISPERX=0`). 처음 실행할 때 모델(약 3GB)을 내려받습니다.
+- 화자 구분: [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)에서 읽기 토큰을 만들고, [pyannote/speaker-diarization-community-1](https://huggingface.co/pyannote/speaker-diarization-community-1) 페이지에서 사용 동의를 누른 뒤 `.env`의 `HF_TOKEN=`에 넣습니다. 토큰이 없으면 화자 구분 없이 글로만 바꿉니다.
+- 속도(Apple M4): 2분 17초 녹음 약 100초. 맥 GPU(MPS)를 먼저 쓰고, 안 되면 CPU로 돌아갑니다.
+- 서버에서 직접 돌리는 방식이라 공개 데모(Vercel·Render)에서는 쓸 수 없습니다.
+
 ## 노션 연동 (선택)
 
 `NOTION_TOKEN`이 있으면 다음이 켜집니다. 없으면 로컬 파일만 씁니다.

@@ -5,6 +5,7 @@ import path from 'node:path';
 import * as store from './lib/store.js';
 import { analyze, transcribe, analysisModel, isMock, canTranscribe, sttEngine, askPolicy, reviewWording } from './lib/ai.js';
 import { clovaEnabled } from './lib/clova.js';
+import { whisperxEnabled, whisperxDiarizes } from './lib/whisperx.js';
 import { saveMarkdown, saveReviewMarkdown } from './lib/markdown.js';
 import { loadPolicies, loadGlossary, findAvoidedTerms, selectUiStrings } from './lib/knowledge.js';
 import * as notion from './lib/notion.js';
@@ -113,7 +114,7 @@ async function syncMeetingToNotion(meetingId, versionNo) {
 
 const ROOT = import.meta.dirname;
 const app = express();
-const upload = multer({ dest: process.env.VERCEL ? '/tmp/uploads' : path.join(ROOT, 'uploads'), limits: { fileSize: (clovaEnabled() ? 500 : 25) * 1024 * 1024 } }); // CLOVA Speech는 큰 녹음도 받는다
+const upload = multer({ dest: process.env.VERCEL ? '/tmp/uploads' : path.join(ROOT, 'uploads'), limits: { fileSize: (clovaEnabled() || whisperxEnabled() ? 500 : 25) * 1024 * 1024 } }); // CLOVA Speech는 큰 녹음도 받는다
 
 app.use(express.json({ limit: '2mb' }));
 app.use(express.static(path.join(ROOT, 'public')));
@@ -132,6 +133,7 @@ app.get('/api/status', (req, res) => {
     hasKey: Boolean(process.env.ANTHROPIC_API_KEY),
     canTranscribe: canTranscribe(),
     sttEngine: sttEngine(),
+    sttDiarize: sttEngine() === 'CLOVA Speech' || (sttEngine() === 'whisperX' && whisperxDiarizes()),
     notion: notion.notionStatus(),
   });
 });

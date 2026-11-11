@@ -94,6 +94,8 @@ api('/api/status').then((s) => {
       '녹음 변환은 CLOVA Speech 또는 OpenAI 키가 있을 때만 돼요. 지금은 클로바노트에서 내보낸 .txt를 올려 주세요.';
   } else if (s.sttEngine === 'CLOVA Speech') {
     $('#audio-box .hint').textContent = 'CLOVA Speech로 바꿔요 · 화자 구분 · 500MB·2시간 이하. 변환된 텍스트는 아래에서 고친 뒤 정리하세요.';
+  } else if (s.sttEngine === 'whisperX') {
+    $('#audio-box .hint').textContent = `whisperX로 이 컴퓨터에서 바꿔요${s.sttDiarize ? ' · 화자 구분' : ' (화자 구분은 HF_TOKEN을 넣으면 켜져요)'} · 2분 녹음에 2분쯤 걸려요.`;
   }
 });
 
@@ -195,12 +197,12 @@ $('#btn-transcribe').addEventListener('click', async (e) => {
   e.target.disabled = true;
   setMsg(msg, '녹음을 텍스트로 바꾸는 중이에요… 30분 녹음이면 1~2분쯤 걸려요.');
   try {
-    const { transcript, speakers = [], engine } = await api('/api/transcribe', { method: 'POST', body: fd });
+    const { transcript, speakers = [], engine, warning } = await api('/api/transcribe', { method: 'POST', body: fd });
     form.transcript.value = transcript;
     if (speakers.length && !form.attendees.value.trim()) { form.attendees.value = speakers.join(', '); renderAttendeePicker(); }
     setMsg(msg, speakers.length
       ? `${engine}로 변환했어요 · 화자 ${speakers.length}명. 전사본의 '화자 A' 등을 실제 이름으로 바꾸면 담당자를 더 정확히 나눠요.`
-      : '변환했어요. 이름·숫자가 맞는지 확인하고 고친 뒤 정리하세요.', 'ok');
+      : `변환했어요. 이름·숫자가 맞는지 확인하고 고친 뒤 정리하세요.${warning ? ` (${warning})` : ''}`, 'ok');
   } catch (err) { setMsg(msg, err.message, 'err'); }
   e.target.disabled = false;
 });

@@ -10,3 +10,5 @@ _backup/
 data/
 output/
 .vercel/
+.venv-whisperx/
+__pycache__/
