@@ -295,7 +295,7 @@ document.addEventListener('change', (e) => {
 /* ---------- 2. 검토·승인 ---------- */
 const SECTIONS = [
   { key: 'decisions', title: '결정사항', fields: [['content', '결정된 내용']], cls: '' },
-  { key: 'my_tasks', title: '내 할 일', fields: [['task', '할 일'], ['due', '기한', 'date']], cls: 'c2', due: true },
+  { key: 'my_tasks', title: '내 할 일', fields: [['kind', '구분', 'kind'], ['task', '할 일'], ['due', '기한', 'date']], cls: 'c2k', due: true },
   { key: 'dev_requests', title: '개발자 확인 요청', fields: [['team', '팀', 'team'], ['to', '대상'], ['question', '확인할 내용'], ['due', '기한', 'date']], cls: 'c4', due: true },
   { key: 'open_questions', title: '다시 물어볼 것', fields: [['team', '팀', 'team'], ['to_whom', '누구에게'], ['question', '질문'], ['why', '안 물으면 생길 문제']], cls: 'c4' },
   { key: 'bm.discussed', title: 'BM 논의', fields: [['topic', '주제'], ['current_state', '현재 상태'], ['numbers_to_check', '확인할 숫자']], cls: 'c3' },
@@ -312,9 +312,13 @@ function itemHtml(sec, it, checked) {
       const val = it[name] ?? '';
       const missing = sec.due && name === 'due' && !val;
       const ph = missing ? `미정: ${it.due_text || '기한 언급 없음'}` : '';
+      if (type === 'kind') {
+        return `<div><div class="mini">${label}</div><select class="kind-select" title="다른 팀에 확인할 일이면 팀을 고르세요 — 개발자 확인 요청으로 옮겨져요">${['내 할 일', ...AI_TEAMS].map((t) => `<option ${t === '내 할 일' ? 'selected' : ''}>${t}</option>`).join('')}</select></div>`;
+      }
       if (type === 'team') {
         const cur = val || guessTeam(it.to || it.to_whom || '');
-        return `<div><div class="mini">${label}</div><select name="team">${AI_TEAMS.map((t) => `<option ${t === cur ? 'selected' : ''}>${t}</option>`).join('')}</select></div>`;
+        const mine = sec.key === 'dev_requests' ? '<option>내 할 일</option>' : '';
+        return `<div><div class="mini">${label}</div><select name="team" class="${mine ? 'kind-select' : ''}" title="${mine ? '‘내 할 일’을 고르면 내 할 일로 옮겨져요' : ''}">${mine}${AI_TEAMS.map((t) => `<option ${t === cur ? 'selected' : ''}>${t}</option>`).join('')}</select></div>`;
       }
       if (type === 'date') {
         return `<div><div class="mini">${label}${missing ? ' · 확인 필요' : ''}</div>
@@ -374,6 +378,13 @@ async function openReview(meetingId, versionNo) {
   if (readonly) $$('input, textarea, select', el).forEach((i) => (i.disabled = true));
 
   el.addEventListener('change', (e) => {
+    if (e.target.matches('.kind-select')) {
+      const item = e.target.closest('.item');
+      const from = item.closest('[data-sec]').dataset.sec;
+      if (from === 'my_tasks' && e.target.value !== '내 할 일') moveReviewItem(el, item, 'dev_requests', e.target.value);
+      if (from === 'dev_requests' && e.target.value === '내 할 일') moveReviewItem(el, item, 'my_tasks');
+      return;
+    }
     if (e.target.matches('.item > input[type=checkbox]')) e.target.parentElement.classList.toggle('off', !e.target.checked);
     if (e.target.matches('.fu-toggle input')) {
       const row = e.target.closest('.fu-item');
@@ -411,6 +422,32 @@ async function openReview(meetingId, versionNo) {
   el.classList.remove('hidden');
   $$('.tab').forEach((t) => t.classList.remove('active'));
   window.scrollTo(0, 0);
+}
+
+// 검토 화면: '내 할 일' ↔ '개발자 확인 요청' 사이로 항목을 옮긴다 (적어 둔 내용·기한·근거는 그대로)
+function moveReviewItem(el, item, toKey, team) {
+  const o = {};
+  $$('input[name], select[name]', item).forEach((i) => (o[i.name] = i.value.trim()));
+  const checked = $('input[type=checkbox]', item).checked;
+  const base = { due: o.due || '', due_text: o.due_text || '', evidence: o.evidence };
+  const it = toKey === 'dev_requests'
+    ? { ...base, team, to: '', question: o.task || '' }
+    : { ...base, task: [o.question, o.to].filter(Boolean).join(' · ') };
+  const sec = SECTIONS.find((s) => s.key === toKey);
+  const box = $(`[data-sec="${toKey}"]`, el);
+  $('.empty', box)?.remove();
+  box.insertAdjacentHTML('beforeend', itemHtml(sec, it, checked));
+  const fromBox = item.closest('[data-sec]');
+  item.remove();
+  if (!$('.item', fromBox)) fromBox.innerHTML = '<div class="empty">없음</div>';
+  for (const b of [box, fromBox]) {
+    const c = b.previousElementSibling?.querySelector('.count');
+    if (c) c.textContent = `${$$('.item', b).length}건`;
+  }
+  const moved = box.lastElementChild;
+  moved.classList.add('just-moved');
+  moved.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  setTimeout(() => moved.classList.remove('just-moved'), 1600);
 }
 
 function collect(el) {

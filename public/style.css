@@ -511,7 +511,7 @@ a.chip:hover { background: var(--fill-accent-blue); text-decoration: none; }
 .due-input { height: 30px; margin: 0; padding: 0 8px; font-size: 13px; width: 116px; }
 .status-select { width: 112px; height: 30px; margin: 0; padding: 0 8px; font-size: 13px; }
 
-.fields.c4 { grid-template-columns: 120px 150px 1fr 168px; }
+.fields.c4 { grid-template-columns: 120px 150px 1fr auto; }
 #view-review-text .fields.c4, .fields.c4 select { margin-top: 4px; }
 @media (max-width: 720px) { .fields.c4 { grid-template-columns: 1fr; } }
 
@@ -666,3 +666,8 @@ h2 .btn.small { font-size: 13px; }
 .ap-member { padding: 5px 12px; border: 1px solid var(--border-neutral-heavy); border-radius: 999px; background: var(--surface); font: 500 13px var(--font); color: var(--text-neutral); cursor: pointer; transition: background var(--motion), border-color var(--motion); }
 .ap-member:hover { border-color: var(--text-accent-blue); }
 .ap-member.on { background: var(--fill-accent-blue); border-color: var(--text-accent-blue); color: var(--text-accent-blue); font-weight: 700; }
+
+/* ---------- 검토: 내 할 일 ↔ 확인 요청 옮기기 ---------- */
+.fields.c2k { grid-template-columns: 140px 1fr auto; }
+@media (max-width: 720px) { .fields.c2k { grid-template-columns: 1fr; } }
+.item.just-moved { box-shadow: 0 0 0 2px var(--text-accent-blue); transition: box-shadow 0.6s; }
