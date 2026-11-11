@@ -91,7 +91,9 @@ api('/api/status').then((s) => {
   if (!s.canTranscribe) {
     $('#btn-transcribe').disabled = true;
     $('#audio-box .hint').textContent =
-      '녹음 변환은 OpenAI 키가 있을 때만 돼요. 지금은 클로바노트 등에서 뽑은 전사본을 붙여넣어 주세요.';
+      '녹음 변환은 CLOVA Speech 또는 OpenAI 키가 있을 때만 돼요. 지금은 클로바노트에서 내보낸 .txt를 올려 주세요.';
+  } else if (s.sttEngine === 'CLOVA Speech') {
+    $('#audio-box .hint').textContent = 'CLOVA Speech로 바꿔요 · 화자 구분 · 500MB·2시간 이하. 변환된 텍스트는 아래에서 고친 뒤 정리하세요.';
   }
 });
 
@@ -191,11 +193,14 @@ $('#btn-transcribe').addEventListener('click', async (e) => {
   const fd = new FormData();
   fd.append('audio', file);
   e.target.disabled = true;
-  setMsg(msg, '녹음을 텍스트로 바꾸는 중이에요… (1분짜리 녹음 기준 10~20초)');
+  setMsg(msg, '녹음을 텍스트로 바꾸는 중이에요… 30분 녹음이면 1~2분쯤 걸려요.');
   try {
-    const { transcript } = await api('/api/transcribe', { method: 'POST', body: fd });
+    const { transcript, speakers = [], engine } = await api('/api/transcribe', { method: 'POST', body: fd });
     form.transcript.value = transcript;
-    setMsg(msg, '변환했어요. 이름·숫자가 맞는지 확인하고 고친 뒤 정리하세요.', 'ok');
+    if (speakers.length && !form.attendees.value.trim()) { form.attendees.value = speakers.join(', '); renderAttendeePicker(); }
+    setMsg(msg, speakers.length
+      ? `${engine}로 변환했어요 · 화자 ${speakers.length}명. 전사본의 '화자 A' 등을 실제 이름으로 바꾸면 담당자를 더 정확히 나눠요.`
+      : '변환했어요. 이름·숫자가 맞는지 확인하고 고친 뒤 정리하세요.', 'ok');
   } catch (err) { setMsg(msg, err.message, 'err'); }
   e.target.disabled = false;
 });

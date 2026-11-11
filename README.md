@@ -24,7 +24,7 @@ npm start                 # http://localhost:3000
 ```
 
 - 회의 정리는 Claude(`claude-opus-5-5`)가 합니다.
-- Claude에는 음성 인식이 없어서, 녹음 파일 변환은 `OPENAI_API_KEY`가 있을 때만 켜집니다 (OpenAI Whisper). 없으면 클로바노트 등에서 뽑은 전사본을 붙여넣습니다.
+- Claude에는 음성 인식이 없어서, 녹음 파일 변환은 **CLOVA Speech**(`CLOVA_SPEECH_INVOKE_URL`, `CLOVA_SPEECH_SECRET` — 한국어, 화자 구분, 팀 명단 이름을 인식 힌트로 사용) 또는 OpenAI Whisper(`OPENAI_API_KEY`) 키가 있을 때만 켜집니다. 둘 다 있으면 CLOVA Speech를 씁니다. 없으면 클로바노트에서 내보낸 `.txt`를 올립니다.
 
 키 없이 화면 흐름만 볼 때는 연습 모드로 켭니다. AI를 부르지 않고 `samples/mock-analysis.json`을 결과로 씁니다. 화면 위쪽에 "연습 모드" 표시가 나옵니다.
 

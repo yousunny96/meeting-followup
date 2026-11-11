@@ -3,7 +3,8 @@ import multer from 'multer';
 import fs from 'node:fs';
 import path from 'node:path';
 import * as store from './lib/store.js';
-import { analyze, transcribe, analysisModel, isMock, canTranscribe, askPolicy, reviewWording } from './lib/ai.js';
+import { analyze, transcribe, analysisModel, isMock, canTranscribe, sttEngine, askPolicy, reviewWording } from './lib/ai.js';
+import { clovaEnabled } from './lib/clova.js';
 import { saveMarkdown, saveReviewMarkdown } from './lib/markdown.js';
 import { loadPolicies, loadGlossary, findAvoidedTerms, selectUiStrings } from './lib/knowledge.js';
 import * as notion from './lib/notion.js';
@@ -112,7 +113,7 @@ async function syncMeetingToNotion(meetingId, versionNo) {
 
 const ROOT = import.meta.dirname;
 const app = express();
-const upload = multer({ dest: process.env.VERCEL ? '/tmp/uploads' : path.join(ROOT, 'uploads'), limits: { fileSize: 25 * 1024 * 1024 } });
+const upload = multer({ dest: process.env.VERCEL ? '/tmp/uploads' : path.join(ROOT, 'uploads'), limits: { fileSize: (clovaEnabled() ? 500 : 25) * 1024 * 1024 } }); // CLOVA Speech는 큰 녹음도 받는다
 
 app.use(express.json({ limit: '2mb' }));
 app.use(express.static(path.join(ROOT, 'public')));
@@ -130,6 +131,7 @@ app.get('/api/status', (req, res) => {
     model: analysisModel(),
     hasKey: Boolean(process.env.ANTHROPIC_API_KEY),
     canTranscribe: canTranscribe(),
+    sttEngine: sttEngine(),
     notion: notion.notionStatus(),
   });
 });
@@ -141,8 +143,10 @@ app.post(
   wrap(async (req, res) => {
     if (!req.file) throw new Error('녹음 파일을 올려 주세요.');
     try {
-      const text = await transcribe(req.file.path, req.file.originalname);
-      res.json({ transcript: text });
+      // 팀 명단의 이름을 인식 힌트로 넘긴다 (CLOVA Speech)
+      let boostWords = [];
+      try { boostWords = (await teams.loadDirectory()).members.map((m) => m.name); } catch {}
+      res.json(await transcribe(req.file.path, req.file.originalname, { boostWords }));
     } finally {
       fs.rmSync(req.file.path, { force: true }); // 원본 녹음은 서버에 남기지 않는다
     }
