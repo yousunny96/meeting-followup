@@ -1,0 +1,10 @@
+.venv-whisperx
+__pycache__
+node_modules
+.env
+.env.*
+data
+output
+uploads
+_backup
+.omc
