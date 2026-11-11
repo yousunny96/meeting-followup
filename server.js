@@ -205,6 +205,32 @@ app.get('/api/meetings', (req, res) => {
   res.json(list.reverse());
 });
 
+// 회의 삭제: 앱에서는 지우고, 노션 회의록·캘린더 카드는 휴지통으로 보낸다
+app.delete(
+  '/api/meetings/:id',
+  wrap(async (req, res) => {
+    const by = String(req.body?.by || '').trim() || null;
+    const { meeting, tasks } = store.deleteMeeting(req.params.id, by);
+    const notionErrors = [];
+    let trashed = 0;
+    if (notion.notionEnabled()) {
+      const pages = [
+        ...meeting.versions.map((v) => v.notion?.pageId).filter(Boolean),
+        ...tasks.filter((t) => t.notion?.pageId && !t.notion.trashed).map((t) => t.notion.pageId),
+      ];
+      for (const pageId of new Set(pages)) {
+        try {
+          await notion.trashPage(pageId);
+          trashed++;
+        } catch (e) {
+          notionErrors.push(e.message);
+        }
+      }
+    }
+    res.json({ ok: true, meetingId: meeting.id, title: meeting.title, tasks: tasks.length, notionTrashed: trashed, notionErrors });
+  })
+);
+
 app.get(
   '/api/meetings/:id',
   wrap(async (req, res) => {

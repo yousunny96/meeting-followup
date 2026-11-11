@@ -627,6 +627,7 @@ async function renderHistory() {
         <span class="grow"></span>
         <button class="btn ghost small" data-re="${m.id}">재분석 (새 버전 만들기)</button>
         <button class="btn ghost small" data-log="${m.id}">변경 기록 보기</button>
+        <button class="btn ghost small danger" data-del="${m.id}">회의 삭제</button>
       </div>
       <ul class="log hidden" id="log-${m.id}"></ul>
     </td></tr>`;
@@ -666,6 +667,23 @@ async function renderHistory() {
         const r = await api(`/api/meetings/${b.dataset.re}/reanalyze`, { method: 'POST', body: { reason: '재분석' } });
         openReview(r.meetingId, r.version);
       } catch (err) { alert(err.message); b.disabled = false; }
+    })
+  );
+  $$('[data-del]', box).forEach((b) =>
+    b.addEventListener('click', async () => {
+      const m = meetings.find((x) => x.id === b.dataset.del);
+      const hasNotion = m?.versions.some((v) => v.notion?.pageId);
+      const msg = `'${m?.title || b.dataset.del}' 회의를 삭제할까요?\n\n` +
+        '- 이 회의와 여기서 나온 할 일·확인 요청이 앱에서 모두 지워져요. 되돌릴 수 없어요.\n' +
+        (hasNotion ? '- 노션 회의록과 캘린더 카드는 휴지통으로 가요 (노션 휴지통에서 되살릴 수 있어요).\n' : '') +
+        '- 변경 기록에는 삭제했다는 사실만 남아요.';
+      if (!confirm(msg)) return;
+      b.disabled = true; b.textContent = '삭제하는 중…';
+      try {
+        const r = await api(`/api/meetings/${b.dataset.del}`, { method: 'DELETE', body: { by: store.get('owner') } });
+        if (r.notionErrors?.length) alert(`앱에서는 지웠지만 노션 일부를 휴지통으로 못 보냈어요: ${r.notionErrors.join(' / ')}`);
+      } catch (err) { alert(err.message); }
+      renderHistory();
     })
   );
   $$('[data-log]', box).forEach((b) =>

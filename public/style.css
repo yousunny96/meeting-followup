@@ -648,3 +648,7 @@ h2 .btn.small { font-size: 13px; }
 .cite .src > span { flex: 1; min-width: 0; }
 .cite-link { flex: none; font-size: 12px; font-weight: 700; color: var(--text-accent-blue); text-decoration: none; padding: 2px 8px; border-radius: var(--radius-8); box-shadow: inset 0 0 0 1px color-mix(in oklch, currentColor 40%, transparent); }
 .cite-link:hover { background: var(--fill-accent-blue); }
+
+/* ---------- 회의 삭제 버튼 ---------- */
+.btn.danger { color: var(--danger, oklch(0.55 0.2 25)); }
+.btn.danger:hover { background: color-mix(in oklch, var(--danger, oklch(0.55 0.2 25)) 12%, transparent); }
