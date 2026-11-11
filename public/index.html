@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>회의 후속 정리기</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Noto+Sans+KR:wght@400;700&display=swap" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="brand">회의 후속 정리기 <span class="sub">PM용 · 회의 녹음 → 할 일·확인 요청·BM</span></div>
+    <span id="mode" class="badge"></span>
+    <span id="notion-mode" class="badge gray hidden"></span>
+    <nav>
+      <button data-view="today" class="tab active">오늘</button>
+      <button data-view="new" class="tab">새 회의 정리</button>
+      <button data-view="board" class="tab">할 일 보드</button>
+      <button data-view="policy" class="tab">정책 Q&amp;A</button>
+      <button data-view="review-text" class="tab">문구 검수</button>
+      <button data-view="history" class="tab">회의 이력</button>
+      <button data-view="teams" class="tab">팀 설정</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- 0. 오늘 -->
+    <section id="view-today" class="view">
+      <h1 id="today-title">오늘 챙길 것</h1>
+      <p class="lead">승인한 회의에서 나온 할 일·확인 요청이에요. 상태를 바꾸면 노션 카드도 함께 바뀌고, 기한 미정 항목은 날짜를 바로 정할 수 있어요.</p>
+      <div id="today-stats" class="stats"></div>
+      <div id="today-filters" class="filters"></div>
+      <div id="today-list"></div>
+      <h2>바로가기</h2>
+      <div class="quick">
+        <button class="quick-card" data-go="new"><b>회의 정리하기</b><span>전사본을 넣고 할 일·확인 요청 뽑기</span></button>
+        <button class="quick-card" data-go="policy"><b>정책 물어보기</b><span>노션·지라 정책에서 근거와 함께 답</span></button>
+        <button class="quick-card" data-go="review-text"><b>문구 검수하기</b><span>기획서·공지가 용어집 표기를 따르는지</span></button>
+      </div>
+    </section>
+
+    <!-- 1. 입력 -->
+    <section id="view-new" class="view hidden">
+      <h1>회의 내용 넣기</h1>
+      <p class="lead">음성기록(.txt)이나 녹음 파일을 넣으면 AI가 초안을 만들고, PM이 검토·승인해야 저장돼요.</p>
+      <form id="new-form" class="card">
+        <div class="grid2">
+          <label>회의 제목<input name="title" required placeholder="예: 신규 앨범 예약판매 킥오프" /></label>
+          <label>회의 날짜<input name="meetingDate" type="date" required /></label>
+          <label>내 이름 (PM)<input name="owner" required placeholder="예: 박유선" /></label>
+          <label>참석자 (쉼표로 구분)<input name="attendees" placeholder="예: 정하늘(MD), 이준호(백엔드)" /></label>
+        </div>
+        <label>이전 회의 이어서 <span class="hint" id="prev-hint">같은 주제의 지난 회의를 고르면, 그때 미결이던 항목이 이번에 결정됐는지 AI가 확인해요</span>
+          <select name="prevMeetingId"><option value="">없음 (새 주제)</option></select>
+        </label>
+
+        <div class="seg">
+          <button type="button" data-src="file" class="seg-btn active">음성기록 파일 (.txt)</button>
+          <button type="button" data-src="audio" class="seg-btn">녹음 파일 올리기</button>
+        </div>
+        <div id="file-box" class="drop-zone">
+          <input type="file" id="txt-file" accept=".txt,text/plain" hidden />
+          <p class="drop-title">음성기록 .txt 파일을 끌어다 놓거나 <button type="button" id="btn-pick-txt" class="link-btn">파일 선택</button></p>
+          <p class="hint">클로바노트에서 내보낸 텍스트를 읽어 회의 제목·날짜·참석자·전사본을 자동으로 채워요.</p>
+          <p id="file-info" class="file-info hidden"></p>
+        </div>
+        <div id="audio-box" class="audio-box hidden">
+          <input type="file" id="audio" accept="audio/*,.m4a,.mp3,.wav,.webm" />
+          <button type="button" id="btn-transcribe" class="btn ghost">텍스트로 변환</button>
+          <span class="hint">25MB 이하. 변환된 텍스트는 아래에서 고친 뒤 정리하세요.</span>
+        </div>
+
+        <label>전사본 <span class="hint">불러온 내용을 확인하고 필요하면 고치세요</span>
+          <textarea name="transcript" rows="12" placeholder="음성기록 파일을 불러오면 여기에 표시돼요."></textarea>
+        </label>
+        <div class="row">
+          <button type="button" id="btn-sample" class="btn ghost">예시 회의 불러오기</button>
+          <span class="grow"></span>
+          <button type="submit" class="btn primary">AI로 정리하기</button>
+        </div>
+        <p id="new-msg" class="msg"></p>
+      </form>
+    </section>
+
+    <!-- 2. 검토·승인 -->
+    <section id="view-review" class="view hidden"></section>
+
+    <!-- 3. 할 일 보드 -->
+    <section id="view-board" class="view hidden">
+      <h1>할 일 보드</h1>
+      <p class="lead">승인한 회의에서 나온 항목이 상태별로 쌓여요. 카드는 기한이 가까운 순서예요.</p>
+      <label class="check"><input type="checkbox" id="show-done" /> 대체된 항목도 보기</label>
+      <div id="board"></div>
+    </section>
+
+    <!-- 5. 정책 Q&A -->
+    <section id="view-policy" class="view hidden">
+      <h1>정책 Q&amp;A</h1>
+      <p class="lead">노션·지라에서 가져온 정책 문서만 근거로 답해요. 문서에 없으면 모른다고 답하고, 인용문이 원문과 같은지 시스템이 다시 확인해요.</p>
+      <div id="policy-docs" class="chips"></div>
+      <form id="policy-form" class="card row">
+        <input name="question" class="grow" placeholder="예: 예약판매 상품 출고가 늦어지면 취소할 수 있어?" autocomplete="off" />
+        <button class="btn primary">물어보기</button>
+      </form>
+      <div id="policy-examples" class="chips"></div>
+      <div id="policy-answer"></div>
+      <h2>최근 질문</h2>
+      <div id="policy-history"></div>
+    </section>
+
+    <!-- 6. 문구 검수 -->
+    <section id="view-review-text" class="view hidden">
+      <h1>문구 검수</h1>
+      <p class="lead">기획서·공지 문구가 실제 사이트 화면 표기(노션 UI 문구 용어집)와 맞는지 확인하고, 검수 결과를 파일로 남겨요.</p>
+      <form id="review-form" class="card">
+        <div class="grid2">
+          <label>문서 제목<input name="title" placeholder="예: 노바 2집 예약판매 공지 초안" /></label>
+          <label>언어<select name="lang"><option value="ko">한국어</option><option value="en">영어</option><option value="ja">일본어</option></select></label>
+        </div>
+        <label>검수할 문구<textarea name="text" rows="10" placeholder="기획서나 공지 문구를 붙여넣으세요."></textarea></label>
+        <div class="row">
+          <button type="button" id="btn-review-sample" class="btn ghost">예시 문구 불러오기</button>
+          <button type="button" id="btn-glossary" class="btn ghost">검수 기준 보기</button>
+          <span class="grow"></span>
+          <button class="btn primary">검수하기</button>
+        </div>
+        <p id="review-text-msg" class="msg"></p>
+      </form>
+      <div id="glossary" class="hidden"></div>
+      <div id="review-result"></div>
+    </section>
+
+    <!-- 7. 팀 설정 -->
+    <section id="view-teams" class="view hidden">
+      <h1>팀 설정</h1>
+      <p class="lead">AI가 확인 요청·질문을 어느 팀에 보낼지 고를 때 이 명단을 써요. 이름이나 별칭이 명단에 있으면 그 사람의 팀으로 분류해요.</p>
+      <div id="teams-source"></div>
+      <h2>팀 <span class="count" id="teams-count"></span></h2>
+      <div id="teams-list" class="chips"></div>
+      <form id="team-add" class="row add-row">
+        <input name="name" placeholder="새 팀 이름 (예: 데이터팀)" maxlength="30" />
+        <select name="color" title="색"></select>
+        <button class="btn ghost">팀 추가</button>
+      </form>
+      <h2>구성원 <span class="count" id="members-count"></span>
+        <label class="check" style="margin-left:auto"><input type="checkbox" id="only-undecided" /> 팀 미정만 보기</label></h2>
+      <div class="table-wrap"><table class="db-table members-table">
+        <thead><tr><th style="width:150px">이름</th><th style="width:150px">팀</th><th>역할</th><th>별칭 (쉼표로 구분)</th></tr></thead>
+        <tbody id="members-body"></tbody>
+      </table></div>
+      <form id="member-add" class="row add-row">
+        <input name="name" placeholder="이름" maxlength="30" style="width:140px" />
+        <select name="team"></select>
+        <input name="role" placeholder="역할 (예: 백엔드 개발)" class="grow" />
+        <input name="aliases" placeholder="별칭 (예: 소민 님)" class="grow" />
+        <button class="btn ghost">구성원 추가</button>
+      </form>
+      <p id="teams-msg" class="msg"></p>
+    </section>
+
+    <!-- 4. 이력 -->
+    <section id="view-history" class="view hidden">
+      <h1>회의 이력</h1>
+      <p class="lead">AI 초안과 승인본은 버전별로 남고 지워지지 않아요.</p>
+      <div id="history"></div>
+    </section>
+    <p class="attribution">시각 디자인: 채널톡 Bezier 디자인 시스템 기반</p>
+  </main>
+
+  <script src="app.js" type="module"></script>
+</body>
+</html>
