@@ -31,6 +31,7 @@ function show(view) {
   if (view === 'history') renderHistory();
   if (view === 'policy') renderPolicy();
   if (view === 'teams') renderTeams();
+  if (view === 'new') renderAttendeePicker();
   window.scrollTo(0, 0);
 }
 $$('.tab').forEach((t) => t.addEventListener('click', () => show(t.dataset.view)));
@@ -161,6 +162,7 @@ async function loadTxtFile(file) {
   if (r.title) form.title.value = r.title;
   if (r.meetingDate) form.meetingDate.value = r.meetingDate;
   if (r.attendees.length) form.attendees.value = r.attendees.join(', ');
+  renderAttendeePicker();
   form.transcript.value = r.transcript;
   suggestPrev();
   const info = $('#file-info');
@@ -233,6 +235,7 @@ $('#btn-sample').addEventListener('click', async () => {
   form.meetingDate.value = '2026-11-09';
   form.owner.value = form.owner.value || '박유선';
   form.attendees.value = '박유선(PM), 정하늘(MD), 이준호(백엔드), 최민지(프론트), 한서진(CS)';
+  renderAttendeePicker();
   form.transcript.value = text;
   const info = $('#file-info');
   info.classList.remove('hidden');
@@ -867,7 +870,58 @@ async function renderToday() {
   bindOpen($('#today-list'));
 }
 $$('[data-go]').forEach((b) => b.addEventListener('click', () => show(b.dataset.go)));
-loadDirectory().finally(() => renderToday());
+loadDirectory().finally(() => { renderToday(); renderAttendeePicker(); });
+
+/* ---------- 참석자: 팀 설정의 구성원 명단에서 고르기 ---------- */
+// 입력칸은 그대로 자유 입력을 받고, 명단에서 누르면 '이름(팀)'을 넣고 빼 준다.
+const attendeeName = (s) => s.replace(/\s*\(.*\)\s*$/, '').trim();
+const attendeeList = () => form.attendees.value.split(',').map((s) => s.trim()).filter(Boolean);
+function setAttendees(list) {
+  form.attendees.value = list.join(', ');
+  renderAttendeePicker();
+}
+function renderAttendeePicker() {
+  const box = $('#attendee-picker');
+  if (!box) return;
+  const members = DIRECTORY.members || [];
+  if (!members.length) { box.hidden = true; return; }
+  const chosen = new Set(attendeeList().map(attendeeName));
+  const order = DIRECTORY.teams.map((t) => t.name);
+  const groups = {};
+  for (const m of members) (groups[m.team || '미정'] ||= []).push(m);
+  const teams = Object.keys(groups).sort((a, b) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99));
+  const picked = members.filter((m) => chosen.has(m.name)).length;
+  box.hidden = false;
+  box.open = store.get('attendeePickerOpen') === '1';
+  box.innerHTML = `<summary>팀 명단에서 고르기 <span class="hint">${members.length}명${picked ? ` · ${picked}명 선택됨` : ''} · 팀 설정의 구성원</span></summary>
+    <div class="ap-groups">${teams.map((team) => {
+      const all = groups[team].every((m) => chosen.has(m.name));
+      return `<div class="ap-group">
+        <button type="button" class="ap-team ${all ? 'on' : ''}" data-ap-team="${esc(team)}" title="${all ? '이 팀 모두 빼기' : '이 팀 모두 넣기'}">${esc(team)}</button>
+        <div class="ap-members">${groups[team].map((m) => `<button type="button" class="ap-member ${chosen.has(m.name) ? 'on' : ''}" data-ap-member="${esc(m.name)}" data-ap-team-of="${esc(team)}" title="${esc(m.role || team)}">${esc(m.name)}</button>`).join('')}</div>
+      </div>`;
+    }).join('')}</div>`;
+}
+$('#attendee-picker')?.addEventListener('toggle', (e) => store.set('attendeePickerOpen', e.target.open ? '1' : ''));
+$('#attendee-picker')?.addEventListener('click', (e) => {
+  const mb = e.target.closest('[data-ap-member]');
+  const tb = e.target.closest('[data-ap-team]');
+  if (!mb && !tb) return;
+  const list = attendeeList();
+  const has = (name) => list.some((s) => attendeeName(s) === name);
+  if (mb) {
+    const name = mb.dataset.apMember;
+    setAttendees(has(name) ? list.filter((s) => attendeeName(s) !== name) : [...list, `${name}(${mb.dataset.apTeamOf})`]);
+  } else {
+    const team = tb.dataset.apTeam;
+    const ms = (DIRECTORY.members || []).filter((m) => (m.team || '미정') === team);
+    const allIn = ms.every((m) => has(m.name));
+    setAttendees(allIn
+      ? list.filter((s) => !ms.some((m) => m.name === attendeeName(s)))
+      : [...list, ...ms.filter((m) => !has(m.name)).map((m) => `${m.name}(${team})`)]);
+  }
+});
+form.attendees.addEventListener('input', () => renderAttendeePicker());
 
 /* ---------- 답변·결과 메모 ---------- */
 function answerEditorHtml(to) {

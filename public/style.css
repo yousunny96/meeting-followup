@@ -652,3 +652,17 @@ h2 .btn.small { font-size: 13px; }
 /* ---------- 회의 삭제 버튼 ---------- */
 .btn.danger { color: var(--danger, oklch(0.55 0.2 25)); }
 .btn.danger:hover { background: color-mix(in oklch, var(--danger, oklch(0.55 0.2 25)) 12%, transparent); }
+
+/* ---------- 참석자: 팀 명단에서 고르기 ---------- */
+.attendee-picker { margin: 2px 0 14px; border: 1px solid var(--border-neutral); border-radius: var(--radius-12); background: var(--surface-high); }
+.attendee-picker > summary { cursor: pointer; padding: 10px 14px; font-weight: 700; font-size: 14px; list-style: none; }
+.attendee-picker > summary::before { content: '▸'; display: inline-block; width: 16px; transition: transform var(--motion); }
+.attendee-picker[open] > summary::before { transform: rotate(90deg); }
+.ap-groups { display: flex; flex-direction: column; gap: 8px; padding: 4px 14px 14px; }
+.ap-group { display: flex; align-items: flex-start; gap: 10px; }
+.ap-team { flex: none; width: 104px; text-align: left; padding: 5px 8px; border: 0; border-radius: var(--radius-8); background: none; font: 700 13px var(--font); color: var(--text-neutral-light); cursor: pointer; }
+.ap-team:hover, .ap-team.on { color: var(--text-accent-blue); background: var(--fill-accent-blue); }
+.ap-members { display: flex; flex-wrap: wrap; gap: 6px; }
+.ap-member { padding: 5px 12px; border: 1px solid var(--border-neutral-heavy); border-radius: 999px; background: var(--surface); font: 500 13px var(--font); color: var(--text-neutral); cursor: pointer; transition: background var(--motion), border-color var(--motion); }
+.ap-member:hover { border-color: var(--text-accent-blue); }
+.ap-member.on { background: var(--fill-accent-blue); border-color: var(--text-accent-blue); color: var(--text-accent-blue); font-weight: 700; }
