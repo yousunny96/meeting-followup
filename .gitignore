@@ -9,3 +9,6 @@ _backup/
 # 실제 회의·질문 기록과 승인본은 올리지 않는다 (실행하면 자동으로 다시 생김)
 data/
 output/
+.vercel/
+.vercel
+.env*

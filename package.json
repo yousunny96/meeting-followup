@@ -4,10 +4,6 @@
   "description": "회의 녹음·전사본에서 PM 후속 업무(할 일·개발자 확인 요청·BM 가설)를 뽑아 승인·기록하는 웹앱",
   "private": true,
   "type": "module",
-  "scripts": {
-    "start": "node --env-file-if-exists=.env server.js",
-    "mock": "MOCK_AI=1 node --env-file-if-exists=.env server.js"
-  },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.7.0",
     "@notionhq/client": "^5.31.1",
@@ -16,5 +12,10 @@
   },
   "engines": {
     "node": ">=22"
+  },
+  "main": "server.js",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js",
+    "mock": "MOCK_AI=1 node --env-file-if-exists=.env server.js"
   }
 }

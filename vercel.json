@@ -1,6 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "functions": {
-    "server.js": { "includeFiles": "{samples,knowledge}/**", "maxDuration": 60 }
-  }
+  "builds": [
+    {
+      "src": "server.js",
+      "use": "@vercel/node",
+      "config": { "includeFiles": "{public,samples,knowledge}/**" }
+    }
+  ],
+  "routes": [{ "src": "/(.*)", "dest": "/server.js" }]
 }
