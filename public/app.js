@@ -1,3 +1,4 @@
+import { parseDue, weekdayOf } from './due-parse.js';
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = (v) =>
@@ -266,37 +267,60 @@ form.addEventListener('submit', async (e) => {
   btn.disabled = false;
 });
 
-/* ---------- 기한 입력: 연도·월·일을 고른다 (연도 기본값은 올해) ---------- */
-const THIS_YEAR = new Date().getFullYear();
-function dueInputHtml(value, { name = 'due', cls = '', attrs = '' } = {}) {
-  const [y, m, d] = value ? value.split('-').map(Number) : [THIS_YEAR, '', ''];
-  const opts = (n, cur, unit) => `<option value="">${unit}</option>` +
-    Array.from({ length: n }, (_, i) => i + 1).map((v) => `<option value="${v}" ${v === cur ? 'selected' : ''}>${v}${unit}</option>`).join('');
-  const years = [...new Set([THIS_YEAR - 1, THIS_YEAR, THIS_YEAR + 1, THIS_YEAR + 2, y])].sort();
-  return `<span class="md-input ${cls}" ${attrs}>
-    <select data-md="y" aria-label="연도">${years.map((v) => `<option value="${v}" ${v === y ? 'selected' : ''}>${v}년</option>`).join('')}</select>
-    <select data-md="m" aria-label="월">${opts(12, m, '월')}</select>
-    <select data-md="d" aria-label="일">${opts(31, d, '일')}</select>
+/* ---------- 기한 입력: 글자로 입력·붙여넣기 (달력 버튼으로 고를 수도 있음) ---------- */
+// "11/28", "11월 28일", "다음주 금"처럼 써도 알아서 날짜로 바꾼다. 기준일은 검토 화면에선 회의 날짜, 할 일 보드에선 오늘.
+let dueBase = '';
+const dueLabel = (v) => (v ? `${v} (${weekdayOf(v)})` : '');
+function dueInputHtml(value, { name = 'due', cls = '', attrs = '', base = dueBase } = {}) {
+  return `<span class="md-input ${cls}" ${attrs} data-base="${esc(base || '')}">
+    <input type="text" class="md-text" value="${esc(dueLabel(value))}" placeholder="${cls.includes('compact') ? '예: 11/28' : '예: 11/28, 다음주 금'}" aria-label="기한" autocomplete="off" />
+    <button type="button" class="md-cal" title="달력에서 고르기" aria-label="달력에서 고르기"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></button>
+    <input type="date" class="md-date" tabindex="-1" aria-hidden="true" value="${esc(value || '')}" />
     <input type="hidden" name="${name}" value="${esc(value || '')}" />
   </span>`;
 }
-// 월·일을 고르면 숨은 값(YYYY-MM-DD)을 채우고 'duechange' 이벤트를 보낸다
-document.addEventListener('change', (e) => {
-  if (!e.target.matches('.md-input select')) return;
-  const box = e.target.closest('.md-input');
-  const y = Number($('[data-md=y]', box).value);
-  const m = Number($('[data-md=m]', box).value);
-  const daySel = $('[data-md=d]', box);
-  if (m) {
-    const last = new Date(y, m, 0).getDate();
-    [...daySel.options].forEach((o) => { if (o.value) o.hidden = Number(o.value) > last; });
-    if (Number(daySel.value) > last) daySel.value = String(last);
-  }
-  const d = Number(daySel.value);
-  const value = m && d ? `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}` : '';
-  $('input[type=hidden]', box).value = value;
+// 글자 → 날짜로 확정하고 숨은 값(YYYY-MM-DD)을 채운 뒤 'duechange' 이벤트를 보낸다
+function commitDue(box, raw) {
+  const text = $('.md-text', box);
+  const hidden = $('input[type=hidden]', box);
+  const before = hidden.value;
+  const src = raw ?? text.value;
+  const value = src.trim() ? parseDue(src, box.dataset.base || today()) : '';
+  const bad = value === null;
+  box.classList.toggle('due-bad', bad);
+  if (bad) box.classList.remove('due-missing');
+  box.title = bad ? `"${src.trim()}"을(를) 날짜로 알아보지 못했어요. 예: 11/28, 11월 28일, 다음주 금` : box.title.startsWith('"') ? '' : box.title;
+  if (bad) { text.value = src.trim(); hidden.value = ''; return; }
+  text.value = dueLabel(value);
+  hidden.value = value;
+  $('.md-date', box).value = value;
   box.classList.toggle('due-missing', !value && box.classList.contains('was-missing'));
-  if (value) box.dispatchEvent(new CustomEvent('duechange', { detail: value, bubbles: true }));
+  if (value && value !== before) box.dispatchEvent(new CustomEvent('duechange', { detail: value, bubbles: true }));
+}
+document.addEventListener('focusout', (e) => { if (e.target.matches('.md-text')) commitDue(e.target.closest('.md-input')); });
+document.addEventListener('keydown', (e) => {
+  if (e.target.matches('.md-text') && e.key === 'Enter' && !e.isComposing) { e.preventDefault(); commitDue(e.target.closest('.md-input')); }
+});
+// 여러 줄을 붙여넣으면 아래 기한 칸에 한 줄씩 차례로 채운다 (엑셀·노션 열 복사)
+document.addEventListener('paste', (e) => {
+  if (!e.target.matches('.md-text')) return;
+  const lines = (e.clipboardData?.getData('text') || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (lines.length < 2) return;
+  e.preventDefault();
+  const boxes = $$('.md-input').filter((b) => b.offsetParent);
+  const start = boxes.indexOf(e.target.closest('.md-input'));
+  lines.forEach((l, i) => boxes[start + i] && commitDue(boxes[start + i], l));
+});
+document.addEventListener('click', (e) => {
+  const cal = e.target.closest('.md-cal');
+  if (!cal) return;
+  const d = $('.md-date', cal.closest('.md-input'));
+  try { d.showPicker(); } catch { d.focus(); d.click(); }
+});
+document.addEventListener('change', (e) => {
+  if (!e.target.matches('.md-date')) return;
+  const box = e.target.closest('.md-input');
+  if (e.target.value) commitDue(box, e.target.value);
 });
 
 /* ---------- 2. 검토·승인 ---------- */
@@ -350,6 +374,7 @@ async function openReview(meetingId, versionNo) {
   const v = m.versions.find((x) => x.version === versionNo);
   const data = v.status === '검토 대기' ? v.draft : v.final;
   const readonly = v.status !== '검토 대기';
+  dueBase = m.meetingDate;
   const el = $('#view-review');
 
   el.innerHTML = `
@@ -796,7 +821,7 @@ function dueCell(t) {
     const label = d === 0 ? 'D-day' : d > 0 ? `D-${d}` : `D+${-d}`;
     return `<span class="dday ${cls}">${label}</span><div class="hint">${t.due.slice(5).replace('-', '/')} (${'일월화수목금토'[new Date(t.due).getDay()]})</div>`;
   }
-  return `${dueInputHtml('', { cls: 'compact', attrs: `data-due="${t.id}" title="기한 정하기"` })}
+  return `${dueInputHtml('', { cls: 'compact', base: '', attrs: `data-due="${t.id}" title="기한 정하기"` })}
     <div class="hint">${esc(t.dueText && t.dueText !== '기한 언급 없음' ? t.dueText : '기한 미정')}</div>`;
 }
 
