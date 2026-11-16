@@ -323,12 +323,47 @@ document.addEventListener('change', (e) => {
   if (e.target.value) commitDue(box, e.target.value);
 });
 
+/* ---------- 누구에게: 고른 팀의 구성원 중에서 고르기 (명단에 없으면 직접 입력) ---------- */
+const memberAliases = (m) => [m.name, ...(m.aliases || '').split(',')].map((a) => a.trim().replace(/\s*님$/, '')).filter(Boolean);
+const findMember = (text) => (DIRECTORY.members || []).find((m) => memberAliases(m).some((a) => String(text).includes(a)));
+function personOptions(team, val) {
+  const ms = (DIRECTORY.members || []).filter((m) => m.team === team);
+  const hit = val ? findMember(val) : null;
+  const cur = hit && hit.team === team ? hit.name : '';
+  const extra = val && !cur ? `<option value="${esc(val)}" selected>${esc(val)}</option>` : '';
+  return `<option value="" ${!val ? 'selected' : ''}>${ms.length ? '선택하세요' : '구성원 없음'}</option>${extra}` +
+    ms.map((m) => `<option value="${esc(m.name)}" ${m.name === cur ? 'selected' : ''}>${esc(m.name)}${m.role ? ` · ${esc(m.role)}` : ''}</option>`).join('') +
+    '<option value="__custom">직접 입력…</option>';
+}
+function personFieldHtml(name, val, team) {
+  if (!(DIRECTORY.members || []).length) return `<input name="${name}" value="${esc(val)}" />`;
+  return `<select name="${name}" class="person-select" data-team="${esc(team)}">${personOptions(team, val)}</select>`;
+}
+// 팀을 바꾸면 '누구에게' 목록을 그 팀 구성원으로 바꾼다
+function refreshPersonSelect(item) {
+  const team = $('select[name=team]', item)?.value;
+  const sel = $('.person-select', item);
+  if (!team || !sel) return;
+  const hit = sel.value ? findMember(sel.value) : null;
+  sel.dataset.team = team;
+  sel.innerHTML = personOptions(team, hit && hit.team === team ? hit.name : '');
+}
+document.addEventListener('change', (e) => {
+  const sel = e.target;
+  if (!sel.matches('.person-select') || sel.value !== '__custom') return;
+  const input = document.createElement('input');
+  input.name = sel.name;
+  input.placeholder = '이름이나 팀을 직접 입력';
+  sel.replaceWith(input);
+  input.focus();
+});
+
 /* ---------- 2. 검토·승인 ---------- */
 const SECTIONS = [
   { key: 'decisions', title: '결정사항', fields: [['content', '결정된 내용']], cls: '' },
   { key: 'my_tasks', title: '내 할 일', fields: [['kind', '구분', 'kind'], ['task', '할 일'], ['due', '기한', 'date']], cls: 'c2k', due: true },
-  { key: 'dev_requests', title: '개발자 확인 요청', fields: [['team', '팀', 'team'], ['to', '대상'], ['question', '확인할 내용'], ['due', '기한', 'date']], cls: 'c4', due: true },
-  { key: 'open_questions', title: '다시 물어볼 것', fields: [['team', '팀', 'team'], ['to_whom', '누구에게'], ['question', '질문'], ['why', '안 물으면 생길 문제']], cls: 'c4' },
+  { key: 'dev_requests', title: '개발자 확인 요청', fields: [['team', '팀', 'team'], ['to', '대상', 'person'], ['question', '확인할 내용'], ['due', '기한', 'date']], cls: 'c4', due: true },
+  { key: 'open_questions', title: '다시 물어볼 것', fields: [['team', '팀', 'team'], ['to_whom', '누구에게', 'person'], ['question', '질문'], ['why', '안 물으면 생길 문제']], cls: 'c4' },
   { key: 'bm.discussed', title: 'BM 논의', fields: [['topic', '주제'], ['current_state', '현재 상태'], ['numbers_to_check', '확인할 숫자']], cls: 'c3' },
   {
     key: 'bm.hypotheses', title: 'BM 가설 (AI 제안 · 채택할 것만 체크)', adopt: true,
@@ -350,6 +385,10 @@ function itemHtml(sec, it, checked) {
         const cur = val || guessTeam(it.to || it.to_whom || '');
         const mine = sec.key === 'dev_requests' ? '<option>내 할 일</option>' : '';
         return `<div><div class="mini">${label}</div><select name="team" class="${mine ? 'kind-select' : ''}" title="${mine ? '‘내 할 일’을 고르면 내 할 일로 옮겨져요' : ''}">${mine}${AI_TEAMS.map((t) => `<option ${t === cur ? 'selected' : ''}>${t}</option>`).join('')}</select></div>`;
+      }
+      if (type === 'person') {
+        const team = it.team || guessTeam(it.to || it.to_whom || '');
+        return `<div><div class="mini">${label}</div>${personFieldHtml(name, val, team)}</div>`;
       }
       if (type === 'date') {
         return `<div><div class="mini">${label}${missing ? ' · 확인 필요' : ''}</div>
@@ -410,6 +449,7 @@ async function openReview(meetingId, versionNo) {
   if (readonly) $$('input, textarea, select', el).forEach((i) => (i.disabled = true));
 
   el.addEventListener('change', (e) => {
+    if (e.target.matches('select[name=team]')) refreshPersonSelect(e.target.closest('.item'));
     if (e.target.matches('.kind-select')) {
       const item = e.target.closest('.item');
       const from = item.closest('[data-sec]').dataset.sec;
