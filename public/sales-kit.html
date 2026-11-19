@@ -65,10 +65,6 @@
     }
     a { color: inherit; }
     .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
-    .banner { background: var(--text); color: var(--surface); font-size: 14px; }
-    .banner .wrap { display: flex; gap: 10px; align-items: center; justify-content: space-between; padding-block: 10px; }
-    .banner .chip { background: var(--blue); color: #fff; border-radius: 999px; padding: 2px 10px; font-weight: 700; font-size: 12px; margin-right: 8px; }
-    .banner a { font-weight: 700; white-space: nowrap; }
     header { position: sticky; top: 0; z-index: 10; background: color-mix(in oklch, var(--surface) 88%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
     header .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; }
     .logo { display: flex; gap: 10px; align-items: center; font-weight: 700; text-decoration: none; }
@@ -170,7 +166,6 @@
     @media (max-width: 640px) {
       .wrap { padding: 0 16px; }
       header nav a:not(.btn) { display: none; }
-      .banner .msg { display: none; }
       .stats, .steps, .cards, .try { grid-template-columns: 1fr; }
       section { padding: 64px 0; }
       .stage { padding: 16px; }
@@ -181,13 +176,6 @@
   </style>
 </head>
 <body>
-  <div class="banner">
-    <div class="wrap">
-      <span><span class="chip">체험</span><span class="msg">가입 없이 예시 회의 한 건을 정리부터 승인까지 해 볼 수 있어요.</span></span>
-      <a href="/#new">체험하러 가기 →</a>
-    </div>
-  </div>
-
   <header>
     <div class="wrap">
       <a class="logo" href="#top"><i></i>회의 후속 정리기</a>
