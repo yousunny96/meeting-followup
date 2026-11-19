@@ -262,6 +262,8 @@ app.post(
     const versionNo = Number(req.params.v);
     const pending = meeting?.versions.find((v) => v.version === versionNo);
     if (!pending) throw new Error('버전을 찾을 수 없어요.');
+    // 정리본을 쓰기 전에 거절한다 — 이미 승인·대체된 버전의 .md가 덮어써지지 않게
+    if (pending.status !== '검토 대기') throw new Error(`이미 ${pending.status} 상태인 버전이에요.`);
     const mdPath = saveMarkdown(meeting, {
       ...pending,
       final,
