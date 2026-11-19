@@ -242,7 +242,7 @@ $('#btn-sample').addEventListener('click', async () => {
   form.title.value = '노바 정규 2집 예약판매·팬사인회 응모 킥오프';
   form.meetingDate.value = '2026-11-09';
   form.owner.value = form.owner.value || '박유선';
-  form.attendees.value = '박유선(PM), 정하늘(MD), 이준호(백엔드), 최민지(프론트), 한서진(CS)';
+  form.attendees.value = '박유선(PM), 이혜지(MD), 김승원(백엔드), 이수진(프론트), 강옥산(운영팀)';
   renderAttendeePicker();
   form.transcript.value = text;
   const info = $('#file-info');
@@ -604,7 +604,7 @@ const ICON = {
   link: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 };
 
-// "이준호(백엔드)" → 아바타 '이' + 이름 + 역할
+// "김승원(백엔드)" → 아바타 '이' + 이름 + 역할
 function person(raw) {
   if (!raw) return '';
   const m = String(raw).match(/^\s*([^()]+?)\s*(?:\(([^)]*)\))?\s*$/);
