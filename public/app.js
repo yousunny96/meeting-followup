@@ -979,7 +979,13 @@ async function renderToday() {
   bindOpen($('#today-list'));
 }
 $$('[data-go]').forEach((b) => b.addEventListener('click', () => show(b.dataset.go)));
-loadDirectory().finally(() => { renderToday(); renderAttendeePicker(); });
+// 주소 끝에 #new 처럼 화면 이름을 붙이면 그 화면으로 바로 연다 (소개 페이지의 체험 버튼용)
+const startView = location.hash.slice(1);
+loadDirectory().finally(() => {
+  if (/^[a-z-]+$/.test(startView) && $(`.tab[data-view="${startView}"]`)) show(startView);
+  else renderToday();
+  renderAttendeePicker();
+});
 
 /* ---------- 참석자: 팀 설정의 구성원 명단에서 고르기 ---------- */
 // 입력칸은 그대로 자유 입력을 받고, 명단에서 누르면 '이름(팀)'을 넣고 빼 준다.

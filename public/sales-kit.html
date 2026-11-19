@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>회의 후속 정리기 - PM용 회의 후속 관리</title>
+  <meta name="description" content="회의 전사본을 넣으면 결정사항·할 일·확인 요청이 근거 문장과 함께 정리되고, PM이 승인한 것만 한 보드에 기한 순으로 쌓입니다." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Noto+Sans+KR:wght@400;700&display=swap" />
+  <style>
+    /* 앱(style.css)과 같은 Bezier 토큰을 쓴다 */
+    :root {
+      --blue: oklch(0.554 0.214 280);
+      --blue-hover: oklch(0.483 0.229 280);
+      --blue-soft: oklch(0.554 0.214 280 / 0.10);
+      --orange: oklch(0.600 0.146 54);
+      --orange-soft: oklch(0.698 0.156 55 / 0.14);
+      --green: oklch(0.552 0.150 150);
+      --green-soft: oklch(0.652 0.168 150 / 0.12);
+      --red: oklch(0.634 0.177 20);
+      --surface: oklch(1 0 0);
+      --surface-low: oklch(0.975 0.003 286);
+      --card: oklch(1 0 0);
+      --text: oklch(0 0 0 / 0.85);
+      --text-light: oklch(0 0 0 / 0.60);
+      --text-lighter: oklch(0 0 0 / 0.42);
+      --border: oklch(0 0 0 / 0.08);
+      --border-heavy: oklch(0 0 0 / 0.15);
+      --fill: oklch(0 0 0 / 0.05);
+      --shadow: 0 12px 40px oklch(0 0 0 / 0.10);
+      --ease: cubic-bezier(0.3, 0, 0, 1);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --blue: oklch(0.665 0.181 280);
+        --blue-hover: oklch(0.554 0.214 280);
+        --blue-soft: oklch(0.615 0.211 277 / 0.18);
+        --orange: oklch(0.764 0.148 58);
+        --orange-soft: oklch(0.764 0.148 58 / 0.18);
+        --green: oklch(0.732 0.157 150);
+        --green-soft: oklch(0.724 0.162 150 / 0.18);
+        --red: oklch(0.690 0.172 23);
+        --surface: oklch(0.219 0.004 286);
+        --surface-low: oklch(0.261 0.004 286);
+        --card: oklch(0.283 0.007 286);
+        --text: oklch(1 0 0 / 0.90);
+        --text-light: oklch(1 0 0 / 0.62);
+        --text-lighter: oklch(1 0 0 / 0.42);
+        --border: oklch(1 0 0 / 0.08);
+        --border-heavy: oklch(1 0 0 / 0.16);
+        --fill: oklch(1 0 0 / 0.06);
+        --shadow: 0 12px 40px oklch(0 0 0 / 0.40);
+      }
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--surface);
+      color: var(--text);
+      font: 400 16px/1.6 Inter, 'Noto Sans KR', system-ui, sans-serif;
+      word-break: keep-all;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+    .banner { background: var(--text); color: var(--surface); font-size: 14px; }
+    .banner .wrap { display: flex; gap: 10px; align-items: center; justify-content: space-between; padding-block: 10px; }
+    .banner .chip { background: var(--blue); color: #fff; border-radius: 999px; padding: 2px 10px; font-weight: 700; font-size: 12px; margin-right: 8px; }
+    .banner a { font-weight: 700; white-space: nowrap; }
+    header { position: sticky; top: 0; z-index: 10; background: color-mix(in oklch, var(--surface) 88%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+    header .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+    .logo { display: flex; gap: 10px; align-items: center; font-weight: 700; text-decoration: none; }
+    .logo i { width: 22px; height: 22px; border-radius: 6px; background: var(--blue); display: inline-block; }
+    header nav { display: flex; gap: 24px; align-items: center; font-size: 15px; }
+    header nav a:not(.btn) { color: var(--text-light); text-decoration: none; }
+    header nav a:not(.btn):hover { color: var(--text); }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: 8px; padding: 12px 20px; font-weight: 700; text-decoration: none; transition: background 150ms var(--ease), border-color 150ms var(--ease); }
+    .btn.primary { background: var(--blue); color: #fff; }
+    .btn.primary:hover { background: var(--blue-hover); }
+    .btn.ghost { border: 1px solid var(--border-heavy); background: var(--card); }
+    .btn.ghost:hover { border-color: var(--text-lighter); }
+    .btn.small { padding: 8px 14px; font-size: 14px; }
+    .eyebrow { color: var(--blue); font-weight: 700; font-size: 14px; margin: 0 0 12px; }
+    h1 { font-size: clamp(32px, 5vw, 46px); line-height: 1.25; margin: 0 0 20px; letter-spacing: -0.02em; }
+    h2 { font-size: clamp(26px, 3.6vw, 34px); line-height: 1.3; margin: 0 0 12px; letter-spacing: -0.015em; }
+    h3 { font-size: 18px; margin: 0 0 6px; }
+    .lead { font-size: 20px; font-weight: 700; margin: 0 0 14px; }
+    .lead em { font-style: normal; color: var(--blue); }
+    .muted { color: var(--text-light); }
+    .tiny { font-size: 13px; color: var(--text-lighter); }
+    section { padding: 88px 0; }
+    section.alt { background: var(--surface-low); }
+    .section-head { max-width: 640px; margin-bottom: 40px; }
+
+    /* 히어로 */
+    .hero { padding: 72px 0 40px; }
+    .hero-grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: 48px; align-items: center; }
+    .cta-row { display: flex; gap: 10px; flex-wrap: wrap; margin: 28px 0 14px; }
+    .stage { background: linear-gradient(160deg, var(--blue-soft), transparent 70%), var(--surface-low); border-radius: 20px; padding: 28px; }
+    .mock { background: var(--card); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); padding: 20px; font-size: 14px; }
+    .mock-top { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
+    .tag { display: inline-block; border-radius: 6px; padding: 2px 8px; font-size: 12px; font-weight: 700; }
+    .tag.orange { background: var(--orange-soft); color: var(--orange); }
+    .tag.blue { background: var(--blue-soft); color: var(--blue); }
+    .tag.green { background: var(--green-soft); color: var(--green); }
+    .mock h4 { margin: 0 0 14px; font-size: 16px; }
+    .mock-group { border-top: 1px solid var(--border); padding: 12px 0 4px; }
+    .mock-group b { font-size: 13px; }
+    .mock-group b span { color: var(--text-lighter); font-weight: 400; margin-left: 4px; }
+    .item { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; padding: 8px 0; }
+    .item .ev { grid-column: 1 / -1; color: var(--text-lighter); font-size: 12.5px; }
+    .due { font-size: 12.5px; font-weight: 700; color: var(--text-light); white-space: nowrap; }
+    .due.unset { color: var(--orange); background: var(--orange-soft); border-radius: 6px; padding: 1px 8px; }
+    .mock-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 14px; border-top: 1px solid var(--border); }
+    .mock-foot .btn { pointer-events: none; }
+    .caption { text-align: center; margin: 12px 0 0; }
+
+    /* 숫자 */
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 40px; }
+    .stat { border: 1px solid var(--border); border-radius: 12px; padding: 20px; background: var(--card); }
+    .stat strong { display: block; font-size: 28px; letter-spacing: -0.01em; }
+    .stat p { margin: 4px 0 0; color: var(--text-light); font-size: 14px; }
+
+    /* 작동 방식 */
+    .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; counter-reset: step; }
+    .step { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 22px; }
+    .step .who { display: inline-block; margin-bottom: 12px; }
+    .step p { margin: 0; color: var(--text-light); font-size: 15px; }
+
+    /* 전과 후 */
+    .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .col { border-radius: 16px; padding: 28px; border: 1px solid var(--border); background: var(--card); }
+    .col.after { border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-soft); }
+    .col h3 { margin-bottom: 16px; }
+    .col ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+    .col li { padding-left: 26px; position: relative; }
+    .col li::before { content: ''; position: absolute; left: 0; top: 0.55em; width: 14px; height: 2px; background: var(--text-lighter); }
+    .col.after li::before { content: '✓'; width: auto; height: auto; background: none; top: 0; color: var(--blue); font-weight: 700; }
+
+    /* 안전장치·기능 카드 */
+    .cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 22px; }
+    .card p { margin: 0; color: var(--text-light); font-size: 15px; }
+
+    /* 표 */
+    table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; font-size: 15px; }
+    th, td { text-align: left; padding: 14px 18px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { width: 34%; font-weight: 700; background: var(--fill); }
+    tr:last-child th, tr:last-child td { border-bottom: none; }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start; }
+    .list { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+
+    /* 마지막 CTA */
+    .final { text-align: center; }
+    .final .box { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 48px 28px; box-shadow: var(--shadow); }
+    .try { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 28px 0; text-align: left; }
+    .try li { list-style: none; background: var(--surface-low); border-radius: 12px; padding: 14px; font-size: 14px; }
+    .try li b { display: block; color: var(--blue); font-size: 12px; margin-bottom: 4px; }
+    .try { padding: 0; }
+    footer { padding: 40px 0 56px; border-top: 1px solid var(--border); }
+    footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+    @media (max-width: 900px) {
+      .hero-grid, .two, .compare { grid-template-columns: 1fr; }
+      .steps { grid-template-columns: repeat(2, 1fr); }
+      .try { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 640px) {
+      .wrap { padding: 0 16px; }
+      header nav a:not(.btn) { display: none; }
+      .banner .msg { display: none; }
+      .stats, .steps, .cards, .try { grid-template-columns: 1fr; }
+      section { padding: 64px 0; }
+      .stage { padding: 16px; }
+      th, td { display: block; width: 100%; }
+      th { border-bottom: none; padding-bottom: 4px; }
+      td { padding-top: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="banner">
+    <div class="wrap">
+      <span><span class="chip">체험</span><span class="msg">가입 없이 예시 회의 한 건을 정리부터 승인까지 해 볼 수 있어요.</span></span>
+      <a href="/#new">체험하러 가기 →</a>
+    </div>
+  </div>
+
+  <header>
+    <div class="wrap">
+      <a class="logo" href="#top"><i></i>회의 후속 정리기</a>
+      <nav>
+        <a href="#flow">작동 방식</a>
+        <a href="#safety">안전장치</a>
+        <a href="#cost">비용</a>
+        <a href="#start">도입</a>
+        <a class="btn primary small" href="/#new">체험하기</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div>
+          <p class="eyebrow">기획 회의가 많은 PM을 위한 회의 후속 관리</p>
+          <h1>회의는 끝났는데,<br />누가 언제까지 하기로 했죠?</h1>
+          <p class="lead"><em>회의록이 할 일 보드</em>가 돼요.<br />근거 문장을 확인하고 승인만 하세요.</p>
+          <p class="muted">전사본을 넣으면 AI가 결정사항, 내 할 일, 개발자 확인 요청, 다시 물어볼 것으로 나눠요. "다음 주 수요일"은 날짜로 바꾸고, 확정할 수 없는 기한은 비워 둬요. PM이 승인한 것만 한 보드에 기한 순서로 쌓여요.</p>
+          <div class="cta-row">
+            <a class="btn primary" href="/#new">예시 회의로 직접 정리해 보기</a>
+            <a class="btn ghost" href="docs/user-guide.pdf" target="_blank" rel="noopener">사용자 가이드 (PDF)</a>
+          </div>
+          <p class="tiny">가입 없음 · 가상 회의 1건 · 약 3분이면 승인까지 돌아봐요</p>
+        </div>
+
+        <div class="stage" aria-label="검토 화면 예시">
+          <div class="mock">
+            <div class="mock-top"><span class="tag orange">검토 대기</span><span class="tiny">AI 초안 · v1 · 11월 9일 회의</span></div>
+            <h4>노바 정규 2집 예약판매·팬사인회 응모 킥오프</h4>
+            <div class="mock-group">
+              <b>결정사항<span>3건</span></b>
+              <div class="item"><span>예약판매 오픈은 11월 20일 오전 11시</span><span></span>
+                <span class="ev">근거: "오픈일은 11월 20일 11시로 확정하죠."</span></div>
+            </div>
+            <div class="mock-group">
+              <b>개발자 확인 요청<span>3건</span></b>
+              <div class="item"><span>동시 주문 시 재고 차감 부하 테스트 결과 · 김승원</span><span class="due">11/18 (수)</span>
+                <span class="ev">근거: "다음 주 수요일까지 결과 드릴게요."</span></div>
+            </div>
+            <div class="mock-group">
+              <b>내 할 일<span>4건</span></b>
+              <div class="item"><span>재무팀과 해외 결제 환율 기준 시점 논의</span><span class="due unset">기한 확인 필요</span>
+                <span class="ev">AI가 날짜를 확정하지 못했어요 (원문: 기한 언급 없음)</span></div>
+            </div>
+            <div class="mock-foot">
+              <span class="tiny">승인하면 할 일 보드에 쌓여요</span>
+              <span class="btn primary small">검토 완료 · 승인</span>
+            </div>
+          </div>
+          <p class="caption tiny">시연 화면 예시 · 가상 회의</p>
+        </div>
+      </div>
+
+      <div class="wrap">
+        <div class="stats">
+          <div class="stat"><strong>약 30초</strong><p>회의 한 건을 항목별로 정리하는 데 걸린 시간 (실제 AI, 가상 회의)</p></div>
+          <div class="stat"><strong>근거 10 / 10</strong><p>AI가 붙인 근거 문장이 전사본 원문과 그대로 일치</p></div>
+          <div class="stat"><strong>기한 5 / 5</strong><p>"이번 주 목요일", "다음 주 수요일" 같은 표현을 정확한 날짜로 변환</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="flow" class="alt">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="eyebrow">작동 방식</p>
+          <h2>정리는 AI가, 확정은 PM이</h2>
+          <p class="muted">회의가 끝나면 전사본만 넣으세요. 승인하기 전까지는 아무것도 저장되지 않아요.</p>
+        </div>
+        <div class="steps">
+          <div class="step"><span class="tag blue who">PM</span><h3>전사본 넣기</h3><p>클로바노트 .txt를 끌어다 놓으면 제목·날짜·참석자가 채워져요. 녹음 파일도 받아요.</p></div>
+          <div class="step"><span class="tag green who">AI</span><h3>항목별 초안</h3><p>결정사항, 내 할 일, 개발자 확인 요청, 다시 물어볼 것, BM 논의로 나누고 근거 문장을 붙여요.</p></div>
+          <div class="step"><span class="tag blue who">PM</span><h3>근거와 대조</h3><p>원문과 맞는지 보고 고쳐요. 주황색으로 표시된 기한은 직접 정해요.</p></div>
+          <div class="step"><span class="tag blue who">PM</span><h3>승인 → 보드</h3><p>승인한 항목만 할 일 보드와 '오늘' 화면에 기한 순으로 모여요. 노션을 연결하면 회의록도 함께 만들어져요.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <div class="section-head">
+          <p class="eyebrow">전과 후</p>
+          <h2>요약은 이미 하고 계세요.<br />문제는 그다음이에요</h2>
+        </div>
+        <div class="compare">
+          <div class="col">
+            <h3 class="muted">지금</h3>
+            <ul>
+              <li>GPT 요약이 자유 문장이라 "누가 언제까지"가 묻혀요</li>
+              <li>결론이 안 난 의견이 결정처럼 읽혀요</li>
+              <li>할 일은 개인 노션, 확인 요청은 슬랙·지라에 흩어져요</li>
+              <li>답을 받아야 할 기한을 놓치고 같은 질문을 다시 해요</li>
+              <li>가격·배송비 논의가 요약에서 빠져요</li>
+            </ul>
+          </div>
+          <div class="col after">
+            <h3>회의 후속 정리기</h3>
+            <ul>
+              <li>정해진 칸으로 나누고 항목마다 근거 문장을 달아요</li>
+              <li>결론이 없으면 '다시 물어볼 것'으로 따로 모아요</li>
+              <li>할 일과 확인 요청이 한 보드에 기한 순으로 쌓여요</li>
+              <li>'오늘' 화면에서 기한 지남·오늘·3일 안·미정을 한눈에 봐요</li>
+              <li>BM 논의는 별도 칸에, AI 가설은 채택한 것만 남겨요</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="safety" class="alt">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="eyebrow">안전장치</p>
+          <h2>AI가 틀려도 그대로 나가지 않게</h2>
+        </div>
+        <div class="cards">
+          <div class="card"><h3>승인 전에는 저장되지 않아요</h3><p>AI 초안은 검토 화면에만 있어요. PM이 이름을 적고 승인해야 보드와 정리본에 남아요.</p></div>
+          <div class="card"><h3>날짜와 숫자를 지어내지 않아요</h3><p>전사본에 없는 숫자·날짜·이름은 쓰지 않아요. 확정할 수 없는 기한은 비워 두고 표시해요.</p></div>
+          <div class="card"><h3>다시 정리해도 기록이 남아요</h3><p>재분석하면 새 버전이 생기고, 이전 승인본과 이미 완료한 항목은 그대로 보존돼요.</p></div>
+          <div class="card"><h3>모든 변경이 이력에 남아요</h3><p>등록·초안·승인·상태 변경·삭제까지 누가 언제 했는지 지워지지 않는 기록으로 쌓여요.</p></div>
+        </div>
+        <p class="tiny" style="margin-top:20px">함께 들어 있는 기능 · <b>정책 Q&amp;A</b> 정책 문서만 근거로 답하고 인용문을 원문과 다시 대조해요 · <b>문구 검수</b> 기획서·공지를 사이트 표기 기준과 대조해요</p>
+      </div>
+    </section>
+
+    <section id="cost">
+      <div class="wrap two">
+        <div>
+          <p class="eyebrow">비용</p>
+          <h2>쓰는 만큼만 API 요금이 나와요</h2>
+          <p class="muted">회의를 정리할 때마다 Claude API를 한 번 불러요. 요금은 고객사 API 계정으로 청구되고, 이미 쓰는 AI 구독과는 별개예요.</p>
+          <p class="tiny">회의 한 건의 실제 비용은 도입 첫 주에 고객사 회의 길이로 측정해 월 예상액을 함께 정해요.</p>
+        </div>
+        <table>
+          <tr><th>AI 정리</th><td>회의 1건당 1회 호출, 다시 정리하면 추가 1회</td></tr>
+          <tr><th>월 예상</th><td>월 회의 수 × 건당 측정 비용</td></tr>
+          <tr><th>녹음 변환 (선택)</th><td>.txt 전사본을 쓰면 없음. 녹음을 올리면 CLOVA Speech 또는 OpenAI 요금</td></tr>
+          <tr><th>실행 환경</th><td>PM PC에서 바로 실행하거나 사내 서버에 설치</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <section id="start" class="alt">
+      <div class="wrap two">
+        <div>
+          <p class="eyebrow">도입</p>
+          <h2>최근 회의 한 건부터 시작해요</h2>
+          <ol class="list">
+            <li>지난주 회의 전사본 한 건으로 정리·승인을 같이 해 봐요</li>
+            <li>팀·구성원 명단을 넣어 담당 팀이 자동으로 나뉘게 해요</li>
+            <li>노션을 쓰면 회의록 DB와 캘린더를 연결해요 (선택)</li>
+            <li>첫 2주 동안 정리 시간과 기한을 넘긴 확인 요청 수를 비교해요</li>
+          </ol>
+        </div>
+        <table>
+          <tr><th>준비할 것</th><td>회의 전사본(클로바노트 .txt) 또는 녹음, 팀 명단, Claude API 키</td></tr>
+          <tr><th>사람의 승인</th><td>모든 초안은 PM이 검토·승인해야 저장</td></tr>
+          <tr><th>지금 안 되는 것</th><td>로그인·역할별 권한 (PM 1명 기준), 노션에서 바꾼 상태를 앱으로 가져오기, 지라·슬랙 연동</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <section class="final">
+      <div class="wrap">
+        <div class="box">
+          <h2>설명보다,<br />회의 한 건을 직접 정리해 보세요</h2>
+          <p class="muted">예시 회의를 불러와 AI 초안을 근거와 대조하고, 승인한 뒤 할 일 보드에서 다시 찾아봐요.</p>
+          <ol class="try">
+            <li><b>1</b>새 회의 정리 → 예시 회의 불러오기</li>
+            <li><b>2</b>AI로 정리하기</li>
+            <li><b>3</b>근거 문장과 주황색 기한 확인</li>
+            <li><b>4</b>승인자 이름 → 검토 완료 · 승인</li>
+            <li><b>5</b>할 일 보드 · 회의 이력에서 확인</li>
+          </ol>
+          <a class="btn primary" href="/#new">예시 회의로 체험하기</a>
+          <p class="tiny" style="margin-top:14px">가입 없음 · 연습 모드라 AI 대신 정해진 예시 결과가 나와요 · 체험 뒤 '회의 이력'에서 삭제하면 처음 상태로 돌아가요</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap tiny">
+      <span>회의 후속 정리기 · 화면의 회사·회의 내용은 모두 가상 자료예요</span>
+      <span><a href="docs/user-guide.pdf" target="_blank" rel="noopener">사용자 가이드</a> · <a href="docs/ops-guide.pdf" target="_blank" rel="noopener">설치·운영 가이드</a></span>
+    </div>
+  </footer>
+</body>
+</html>
